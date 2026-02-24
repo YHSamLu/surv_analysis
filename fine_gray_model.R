@@ -127,3 +127,19 @@ FineGray_Model <- function(DF = DF,                      # complete data frame
     stop("Error: wrong analysis method, please use 'multi' or 'uni' in variations")
   }
 }
+
+
+#Example
+DF <- DF%>%
+  mutate(FG_CSS = factor(ifelse(Re_OS==0, 0,
+                                ifelse(Re_CSS==1, 1, 2))))#Status as 0 No, 1 Yes, and 2 competing risk
+
+Var_FG <- colnames(DF)
+
+HR_CSS_FG_uni <- FineGray_Model(survival_analysis = "Surv(Followup_OS.CSS, FG_CSS)",
+                                variables = Var_FG,
+                                DF = DF,
+                                variations = "uni",
+                                weights = DF$overlap_weight)
+
+HR_CSS_FG_uni

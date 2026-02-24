@@ -120,3 +120,13 @@ HR_Cox_table <- function(DF = DF,                      # complete data frame
   }
 }
 
+#Example
+Var <- colnames(DF)
+
+HR_OSuni <- HR_Cox_table(DF = DF,
+                         survival_analysis = "Surv(Followup_OS.CSS, Re_OS)", #follow-up time to overall survival event
+                         variables = Var,
+                         variations = "uni",
+                         weights = DF$overlap_weight
+)
+HR_OSuni
