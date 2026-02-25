@@ -59,23 +59,25 @@ FG_Model
 |----------|:----------|:-----------------:|:-----:|
 | Sex      | Male      | 1                 |       |
 |          | Female    | 2.67 (1.12, 4.33) | 0.004 |
-| BMI      | Normal    |1                  |       |
-|          | Overwieght| 7.67 (4.52, 11.4) |<0.001 |
+| BMI      | Normal    | 1                 |       |
+|          | Overwieght| 1.02 (0.21, 2.13) | 0.842 |
+| Stone    | 0 No      | 1                 |       |
+|          | 1 Yes     | 7.67 (4.52, 11.4) |<0.001 |
 
 ## Survival Curve
 
 Survival Curve (Kaplan-Meier Plots) could be displayed very easy by using `ggsurvplot` such as:
 
 ```{r}
-fit_OS <- survfit(Surv(Followup, Re_OS) ~ Sex, data = DF)
+fit_CSS <- survfit(Surv(Followup, Re_CSS) ~ Stone, data = DF)
 
-KM_OS <- ggsurvplot(fit_OS,
+KM_CSS <- ggsurvplot(fit_CSS,
            data = DF,
            surv.median.line = "hv", # Add medians survival
 
            # Change legends: title & labels
-           legend.title = "Sex",
-           legend.labs = c("1 Male", "2 Female"),
+           legend.title = "Stone",
+           legend.labs = c("0 No", "1 Yes"),
 
            # Add p-value and tervals
            pval = TRUE,
@@ -97,9 +99,30 @@ KM_OS <- ggsurvplot(fit_OS,
            # breaks as a year (12 monthes)
            break.x.by = 12,
            xlab = "Time from surgery in months",
-           ylab = "Overall survival probability",
-           title = "Overall Survival Curve"
+           ylab = "Cancer-Specific survival probability",
+           title = "Cancer-Specific Survival Curve"
 )
 
-KM_OS
+KM_CSS
 ```
+
+![](https://github.com/YHSamLu/stone_w.UTUC/blob/main/figures/CSS.wmf)
+
+### Curve with weighted
+
+```{r}
+fitCSS<- survfit(Surv(Followup_OS.CSS, Re_CSS) ~ Stone, data = SurvCurve, weights = DF$weight)
+# weights = ps_model1_overlap$overlap_weight
+grid.draw.ggsurvplot <- function(x){
+  survminer:::print.ggsurvplot(x, newpage = FALSE)
+}
+KM_CSS_overlap <- SurvCurve_overlap(fitCSS,
+                  DF,
+                  curve_title = "Cancer-Specific Survival Curve (Overlap weighted)",
+                  group_name = "Stone",
+                  group_level = c("0 No", "1 Yes"))
+
+KM_CSS_overlap
+```
+
+![](https://github.com/YHSamLu/stone_w.UTUC/blob/main/figures/CSSoverlap.wmf)
