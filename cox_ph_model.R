@@ -7,6 +7,9 @@ library(survey)
 library(PSweight)
 library(survival)
 library(survminer)
+library(finalfit)
+library(stringi)
+library(survival)
 
 
 HR_Cox_table <- function(DF = DF,                      # complete data frame
@@ -16,10 +19,6 @@ HR_Cox_table <- function(DF = DF,                      # complete data frame
                          HR1 = 1,
                          weights = NULL                    # optional weights vector
 ){
-  library(finalfit)
-  library(stringi)
-  library(survival)
-
 
   if (!is.null(weights)) {
     # Fit Cox model with weights if provided
