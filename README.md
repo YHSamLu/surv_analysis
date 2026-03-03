@@ -1,5 +1,6 @@
 # Survival Analysis
-Survival analysis is widely used to show the risk of patients, and especially Cox proportion hazard (PH) model was used for over 50 years that was proposed by Sir David Cox. Therefore, I used R to construct the model for the hazard ratio (HR) with 95% confidence interval and its p-value as data frame using coxph and other function.
+
+Survival analysis is widely used to assess patient risk, with the Cox proportional hazards (PH) model—proposed by Sir David Cox over 50 years ago—being a cornerstone method. Here, I used R to fit the model via `coxph()`, generating a data frame of hazard ratios (HRs) with 95% confidence intervals and p-values.
 
 ```{r}
 library(tidyverse)
@@ -8,46 +9,105 @@ library(survey)
 library(survival)
 library(survminer)
 library(finalfit)
-library(stringi)
+library(stringi)library(tableone)
+library(kableExtra)
+library(tidyverse)
+library(data.table)
+library(kableExtra)
+library(MatchIt)
+library(WeightIt)
+library(MASS)
+library(survey)
+library(PSweight)
+library(dplyr)
+load("surv_functions.RData")
 ```
 
-Import the packages, `tidyverse` and `dplyr` turn the data matrix (data frame) into the form which is avaliable to be analyzed. `survey`, `survival`, and `survminer` are including the all survival model and time-to-event function. 
+Import key packages: `tidyverse` and `dplyr` for reshaping data frames into analysis-ready formats; `survey`, `survival`, and `survminer` for survival models and time-to-event analyses. Custom functions are also provided in `surv_functions.RData`.
+
+## Patients Baseline Characteristics
+
+Before analysis, create a baseline table to compare characteristics between cohorts.
 
 ```{r}
-load("surv_functions.RData") # as RData
+Baseline_Table(DF, Cohort)
 ```
 
+- DF	a **data frame** or **matrix** with all variables, ensuring the grouping variable (defining cohorts for analysis) is the first column.
+- Cohort	a **character**, name the grouping variable (defining cohorts for analysis) as the first column in your data frame.
+
+### Example
+
+```{r message=FALSE, warning=FALSE}
+Baseline <- Baseline_Table(DF = WDmatrix, Cohort = "Sex")
+
+Baseline%>% kbl(caption = "Patient's Baseline") %>%
+  kable_paper("hover",full_width=F)
+```
+
+| Variables|Levels     |  1 Male  | 2 Female | P    | SMD|
+|----------|:----------|:--------:|:--------:|:----:|:--:|
+| BMI(%)   | Normal    |316 (55.9)|471 (61.0)| 0.07|0.103|
+|          | Overwieght|249 (44.1)|301 (39.0)|      |    |
+| Smoke(%) | 0 No      |334 (59.1)|747 (96.8)|<0.001 \*|1.02|
+|          | 1 Yes     |231 (40.9)|25 (3.2)  |      |    |
+
+p<0.05 *
 
 ## Fine-Gray Hazard/Cox Proportion Hazard Model 
 
-Cox model takes varaibles to estimate time-to-event outcome that is two value (status and time).  The formula is the same as linear regression, we code that into the variables of the function. Our function export the table with hazard ratio (95% CI) and its p-value. However, Fine-Gray hazard model add a competing risk, the time-to-event outcome used to be a binary event such as "Yes" (1) or "No" (0) for mortality. Like the code shown:
+The Cox model estimates time-to-event outcomes using covariates, with the outcome defined by two variables: status (event indicator) and time. The formula follows linear regression syntax, specifying variables directly in the function call. Our custom function exports a results table with hazard ratios (95% CI) and p-values.
+
+The Fine-Gray model extends this by incorporating competing risks, where the binary event (e.g., mortality: 1=Yes, 0=No) accounts for alternative outcomes.
 
 ```{r}
-#Example for cox model
-Var <- colnames(DF)# variables
+HR_Cox_table(DF,
+             survival_analysis,
+             variables,
+             variations,
+             weights)
+             
+FineGray_Model(survival_analysis,
+               variables,
+               DF,
+               variations,
+               weights)
+```
+
+- DF	a **data frame** or **matrix** with all variables, ensuring the grouping variable (defining cohorts for analysis) is the first column.
+- survival_analysis	a character string, typically `"Surv(time, event)"`, defines the time-to-event outcome.
+- variables	a **vector** containing all predictor variables.
+- variations	**"uni"** or **"multi"** representing univariate or multivariate.
+- weights	a **vector** for each patient, with length matching the number of rows in the data frame.
+
+### Example: univariate cox model for overall survival (OS)
+
+```{r}
+Var <- colnames(DF)
 
 Cox_Model <- HR_Cox_table(DF = DF,
-                         survival_analysis = "Surv(Followup, Re_OS)", #time-to-event
+                         survival_analysis = "Surv(Followup, Re_OS)",
                          variables = Var,
-                         variations = "uni", #univariate/multivaraite
+                         variations = "uni",
                          weights = DF$weight
 )
 
 Cox_Model
 ```
 
+### Example: multiivariate Fine-Gray hazard model for cancer-specific survival (CSS)
+
 ```{r}
-#Example for Fine-Gray model
 DF <- DF%>%
   mutate(FG_CSS = factor(ifelse(Re_OS==0, 0,
-                                ifelse(Re_CSS==1, 1, 2))))#Status as 0 No, 1 Yes, and 2 competing risk
+                                ifelse(Re_CSS==1, 1, 2))))
 
 Var_FG <- colnames(DF)
 
-FG_Model <- FineGray_Model(survival_analysis = "Surv(Followup, FG_CSS)", #time-to-event
+FG_Model <- FineGray_Model(survival_analysis = "Surv(Followup, FG_CSS)",
                                 variables = Var_FG,
                                 DF = DF,
-                                variations = "uni",
+                                variations = "multi",
                                 weights = DF$weight)
 
 FG_Model
@@ -62,11 +122,13 @@ FG_Model
 | BMI      | Normal    | 1                 |       |
 |          | Overwieght| 1.02 (0.21, 2.13) | 0.842 |
 | Stone    | 0 No      | 1                 |       |
-|          | 1 Yes     | 7.67 (4.52, 11.4) |<0.001 |
+|          | 1 Yes     | 7.67 (4.52, 11.4) |<0.001 \*|
+
+p<0.05 *
 
 ## Survival Curve
 
-Survival Curve (Kaplan-Meier Plots) could be displayed very easy by using `ggsurvplot` such as:
+Survival curves (Kaplan-Meier plots) can be generated easily using `ggsurvplot()` :
 
 ```{r}
 fit_CSS <- survfit(Surv(Followup, Re_CSS) ~ Stone, data = DF)
